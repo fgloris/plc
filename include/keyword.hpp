@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <regex>
 #include <utility>
@@ -24,6 +26,7 @@ class Token{
     Token() = default;
     Token(TokenType type, const std::string &value);
     operator std::string() const;
+    bool operator==(const Token &other) const;
 };
 
 class KeyWordInterpreter{

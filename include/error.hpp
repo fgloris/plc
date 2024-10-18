@@ -1,3 +1,5 @@
+#pragma once
+
 namespace plc {
 
 enum class ErrorType{
@@ -22,7 +24,7 @@ public:
         if(isOk) return value;
         else throw std::runtime_error(std::string("attempting to unwrap an error result ")+(std::string)(*this));
     }
-    ErrorType getError(){if (!isOk) return err; else throw "attempting to get error on an Ok result";}
+    ErrorType unwrapErr(){if (!isOk) return err; else throw "attempting to get error in an Ok result";}
     operator std::string() const{
         if (isOk){
             return std::string("Ok()");
@@ -61,8 +63,8 @@ Result<T> Error(const ErrorType &err) {
 }
 
 template<class T, class E>
-Result<T> ConvertError(Result<E> other) {
-    return Result<T>(other.getError());
+Result<T> Error(Result<E> other) {
+    return Result<T>(other.unwrapErr());
 }
 
 }

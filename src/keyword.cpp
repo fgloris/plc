@@ -8,10 +8,10 @@ KeyWordInterpreter::KeyWordInterpreter(const std::vector<std::pair<TokenType, st
 
 KeyWordInterpreter::KeyWordInterpreter(){
     keyword_regrex_pair_ = std::vector<std::pair<TokenType, std::string>>();
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Keyword, "(begin)|(end)|(if)|(then)|(while)|(do)|(procedure)|(call)|(const)|(var)"));
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Delimiter, ":=|\\.|;|,"));
+    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Keyword, "(begin)|(end)|(if)|(then)|(while)|(do)|(procedure)|(call)|(const)|(var)|(odd)"));
+    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Delimiter, ":=|\\.|;|,|\\(|\\)"));
     keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Operator, ">=|==|<=|<>|>|=|<|\\+|-|/|\\*"));
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Literal, "((1|2|3|4|5|6|7|8|9)(1|2|3|4|5|6|7|8|9|0)*)|0"));
+    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Literal, "[1-9](\\d*|0)"));
     keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Identifier, "([[:alpha:]])(\\w)*"));
 }
 
@@ -41,7 +41,7 @@ Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &inp
         try{
             std::regex regex(regex_str);
             if (std::regex_match(input, regex)){
-                if (res.isOk){return Error<Token>(ErrorType::Ambiguity);}
+                if (res.isOk) return Error<Token>(ErrorType::Ambiguity);
                 res = Ok(Token(std::get<TokenType>(pair), input));
             }
         }catch (std::regex_error& e){
@@ -53,10 +53,22 @@ Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &inp
 
 Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) const noexcept{
     try{
-        std::regex patten("(\\w)(:|\\.|;|,|\\+|-|\\*|/|=|<|>)");
+        std::regex patten = std::regex("([^a-zA-Z0-9_ ])([^a-zA-Z0-9_ ])");
         std::string res = std::regex_replace(input,patten,"$1 $2");
-        patten = std::regex("(:|\\.|;|,|\\+|-|\\*|/|=|<|>)(\\w)");
-        res = std::regex_replace(res,patten,"$1 $2");
+        while (std::regex_replace(res,patten,"$1 $2") != res){
+            res = std::regex_replace(res,patten,"$1 $2");
+        }
+        patten = std::regex("([\\w])([^a-zA-Z0-9_ ])");
+        while (res != std::regex_replace(res,patten,"$1 $2")){
+            res = std::regex_replace(res,patten,"$1 $2");
+        }
+        patten = std::regex("([^a-zA-Z0-9_ ])([\\w])");
+        while (res != std::regex_replace(res,patten,"$1 $2")){
+            res = std::regex_replace(res,patten,"$1 $2");
+        }
+        patten = std::regex(": =");
+        res = std::regex_replace(res,patten,":=");
+        std::cout<<res<<std::endl;
         return Ok(res);
     }catch (std::regex_error& e){
         return Error<std::string>(ErrorType::RegexError);
@@ -65,15 +77,14 @@ Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) co
 
 Result<std::vector<Token>> KeyWordInterpreter::interpretStream(const std::string &input) const noexcept{
     Result<std::string> spl = splitStream(input);
-    if (!spl.isOk) {return ConvertError<std::vector<Token>>(spl);}
+    if (!spl.isOk) {return Error<std::vector<Token>>(spl);}
     std::string splited_str = spl.unwrap();
     std::stringstream stream(splited_str);
     std::string w;
     std::vector<Token> res;
-    while (!stream.eof()){
-        stream >> w;
+    while (stream >> w){
         Result<Token> token_res = interpret(w);
-        if (!token_res.isOk) return ConvertError<std::vector<Token>>(token_res);
+        if (!token_res.isOk) return Error<std::vector<Token>>(token_res);
         res.emplace_back(token_res.unwrap());
     }
     return Ok(res);
@@ -85,6 +96,10 @@ Result<std::vector<Token>> KeyWordInterpreter::interpretFile(const std::string &
     std::stringstream stream;
     stream << f.rdbuf();
     return interpretStream(stream.str());
+}
+
+bool Token::operator==(const Token &other) const{
+    return (type_==other.type_ && value_==other.value_);
 }
 
 Token::operator std::string() const {
