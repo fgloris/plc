@@ -31,12 +31,12 @@ class KeyWordInterpreter{
     KeyWordInterpreter();
     explicit KeyWordInterpreter(const std::vector<std::pair<TokenType, std::string>> &keyword_regrex_pair_);
 
-    Result<Token> interpret(const std::string &input) const;
-    Result<Token> interpretCheckAmbiguity(const std::string &input) const;
-    Result<std::vector<Token>> interpretStream(const std::string &input) const;
-    Result<std::vector<Token>> interpretFile(const std::string &filename) const;
+    Result<Token> interpret(const std::string &input) const noexcept;
+    Result<Token> interpretCheckAmbiguity(const std::string &input) const noexcept;
+    Result<std::vector<Token>> interpretStream(const std::string &input) const noexcept;
+    Result<std::vector<Token>> interpretFile(const std::string &filename) const noexcept;
 
-    Result<std::string> splitStream(const std::string &input) const;
+    Result<std::string> splitStream(const std::string &input) const noexcept;
 
     public:
     std::vector<std::pair<TokenType, std::string>> keyword_regrex_pair_;

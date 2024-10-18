@@ -15,7 +15,7 @@ KeyWordInterpreter::KeyWordInterpreter(){
     keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Identifier, "([[:alpha:]])(\\w)*"));
 }
 
-Result<Token> KeyWordInterpreter::interpret(const std::string &input) const {
+Result<Token> KeyWordInterpreter::interpret(const std::string &input) const noexcept{
     if (input.empty()) return Error<Token>(ErrorType::Empty);
     using pair = std::pair<TokenType, std::string>;
     for (const pair &pair : keyword_regrex_pair_){
@@ -32,7 +32,7 @@ Result<Token> KeyWordInterpreter::interpret(const std::string &input) const {
     return Error<Token>(ErrorType::InvalidSyntax);
 }
 
-Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &input) const {
+Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &input) const noexcept{
     if (input.empty()) return Error<Token>(ErrorType::Empty);
     using pair = std::pair<TokenType, std::string>;
     Result<Token> res(ErrorType::InvalidSyntax);
@@ -51,7 +51,7 @@ Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &inp
     return res;
 }
 
-Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) const{
+Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) const noexcept{
     try{
         std::regex patten("(\\w)(:|\\.|;|,|\\+|-|\\*|/|=|<|>)");
         std::string res = std::regex_replace(input,patten,"$1 $2");
@@ -63,7 +63,7 @@ Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) co
     }
 }
 
-Result<std::vector<Token>> KeyWordInterpreter::interpretStream(const std::string &input) const {
+Result<std::vector<Token>> KeyWordInterpreter::interpretStream(const std::string &input) const noexcept{
     Result<std::string> spl = splitStream(input);
     if (!spl.isOk) {return ConvertError<std::vector<Token>>(spl);}
     std::string splited_str = spl.unwrap();
@@ -79,7 +79,7 @@ Result<std::vector<Token>> KeyWordInterpreter::interpretStream(const std::string
     return Ok(res);
 }
 
-Result<std::vector<Token>> KeyWordInterpreter::interpretFile(const std::string &filename) const{
+Result<std::vector<Token>> KeyWordInterpreter::interpretFile(const std::string &filename) const noexcept{
     std::ifstream f(filename);
     if (!f) return Result<std::vector<Token>>(ErrorType::IOError);
     std::stringstream stream;
