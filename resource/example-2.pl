@@ -4,5 +4,9 @@ var x,y,z,q,r;
 procedure multiply;
     var a,b;
 begin
-    c:=(x)
+    c:=(x);
+    while y>0 do
+    begin
+        a:=c;;;
+    end
 end;.

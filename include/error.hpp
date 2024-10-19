@@ -15,17 +15,17 @@ class Result{
 private:
     T value;
     ErrorType err;
-    Result() = delete;
 public:
     bool isOk;
+    Result() = delete;
     explicit Result(T res) : value(res), isOk(true) {};
     explicit Result(ErrorType err) : err(err), isOk(false) {};
     const T &unwrap() const{
         if(isOk) return value;
-        else throw std::runtime_error(std::string("attempting to unwrap an error result ")+(std::string)(*this));
+        else throw std::runtime_error(std::string("attempting to unwrap an error result ")+static_cast<std::string>(*this));
     }
-    ErrorType unwrapErr(){if (!isOk) return err; else throw "attempting to get error in an Ok result";}
-    operator std::string() const{
+    ErrorType unwrapErr(){if (!isOk) return err; else throw std::runtime_error("attempting to get error in an Ok result");}
+    explicit operator std::string() const{
         if (isOk){
             return std::string("Ok()");
         }else{
@@ -45,7 +45,6 @@ public:
                     goto end;
                 case ErrorType::IOError:
                     errstring = "IOError";
-                    goto end;
             }
             end: return "Error(" + errstring + ")";
         }

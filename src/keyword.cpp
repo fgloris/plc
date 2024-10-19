@@ -1,25 +1,27 @@
+#include <utility>
+
 #include "../include/keyword.hpp"
 
 namespace plc {
 
-Token::Token(TokenType type, const std::string& value): type_(type), value_(value){}
+Token::Token(TokenType type, std::string value): type_(type), value_(std::move(value)){}
 
-KeyWordInterpreter::KeyWordInterpreter(const std::vector<std::pair<TokenType, std::string>> &keyword_regrex_pair_): keyword_regrex_pair_(keyword_regrex_pair_){}
+KeyWordInterpreter::KeyWordInterpreter(const std::vector<std::pair<TokenType, std::string>> &keyword_regex_pair): keyword_regex_pair_(keyword_regex_pair){}
 
 KeyWordInterpreter::KeyWordInterpreter(){
-    keyword_regrex_pair_ = std::vector<std::pair<TokenType, std::string>>();
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Keyword, "(begin)|(end)|(if)|(then)|(while)|(do)|(procedure)|(call)|(const)|(var)|(odd)"));
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Delimiter, ":=|\\.|;|,|\\(|\\)"));
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Operator, ">=|==|<=|<>|>|=|<|\\+|-|/|\\*"));
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Literal, "[1-9](\\d*|0)"));
-    keyword_regrex_pair_.emplace_back(std::make_pair(TokenType::Identifier, "([[:alpha:]])(\\w)*"));
+    keyword_regex_pair_ = std::vector<std::pair<TokenType, std::string>>();
+    keyword_regex_pair_.emplace_back(TokenType::Keyword, "(begin)|(end)|(if)|(then)|(while)|(do)|(procedure)|(call)|(const)|(var)|(odd)");
+    keyword_regex_pair_.emplace_back(TokenType::Delimiter, ":=|\\.|;|,|\\(|\\)");
+    keyword_regex_pair_.emplace_back(TokenType::Operator, ">=||<=|<>|>|=|<|\\+|-|/|\\*");
+    keyword_regex_pair_.emplace_back(TokenType::Literal, "([1-9]\\d*|0)");
+    keyword_regex_pair_.emplace_back(TokenType::Identifier, "([[:alpha:]])(\\w)*");
 }
 
 Result<Token> KeyWordInterpreter::interpret(const std::string &input) const noexcept{
     if (input.empty()) return Error<Token>(ErrorType::Empty);
     using pair = std::pair<TokenType, std::string>;
-    for (const pair &pair : keyword_regrex_pair_){
-        const std::string &regex_str = std::get<std::string>(pair);
+    for (const pair &pair : keyword_regex_pair_){
+        const auto &regex_str = std::get<std::string>(pair);
         try{
             std::regex regex(regex_str);
             if (std::regex_match(input, regex)){
@@ -34,10 +36,10 @@ Result<Token> KeyWordInterpreter::interpret(const std::string &input) const noex
 
 Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &input) const noexcept{
     if (input.empty()) return Error<Token>(ErrorType::Empty);
-    using pair = std::pair<TokenType, std::string>;
+    using Pair = std::pair<TokenType, std::string>;
     Result<Token> res(ErrorType::InvalidSyntax);
-    for (const pair &pair : keyword_regrex_pair_){
-        const std::string &regex_str = std::get<std::string>(pair);
+    for (const Pair &pair : keyword_regex_pair_){
+        const auto &regex_str = std::get<std::string>(pair);
         try{
             std::regex regex(regex_str);
             if (std::regex_match(input, regex)){
@@ -51,7 +53,7 @@ Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &inp
     return res;
 }
 
-Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) const noexcept{
+Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) noexcept{
     try{
         std::regex patten = std::regex("([^a-zA-Z0-9_ ])([^a-zA-Z0-9_ ])");
         std::string res = std::regex_replace(input,patten,"$1 $2");
@@ -78,8 +80,7 @@ Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) co
 Result<std::vector<Token>> KeyWordInterpreter::interpretStream(const std::string &input) const noexcept{
     Result<std::string> spl = splitStream(input);
     if (!spl.isOk) {return Error<std::vector<Token>>(spl);}
-    std::string splited_str = spl.unwrap();
-    std::stringstream stream(splited_str);
+    std::stringstream stream(spl.unwrap());
     std::string w;
     std::vector<Token> res;
     while (stream >> w){
