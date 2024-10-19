@@ -33,4 +33,15 @@ procedure gcd;
 begin
     f:=x;
     g:=y;
-    while f<>
+    while f<>g do
+        begin
+            if f<g then g:=g-f;
+            if g<f then f:=f-g;
+        end
+end;
+
+begin
+    x:=m; y:=n; call multiply;
+    x:=25; y:=3; call divide;
+    x:=34; y:=36; call gcd;
+end.

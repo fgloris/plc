@@ -4,7 +4,7 @@ namespace plc{
 
 GrammarInterpreter::GrammarInterpreter(const std::vector<Token>& tokens):token_list(tokens){
     for (int i = 0; i < 5; i++){
-        token_list.push_back(Token{TokenType::EndOfFile,""});
+        token_list.push_back(Token{TokenType::EndOfFile,"eof"});
     }
 }
 
@@ -50,6 +50,7 @@ Result<size_t> GrammarInterpreter::interpretBlock(size_t n){
 Result<size_t> GrammarInterpreter::interpretConstDecl(size_t n){
     while (1){
         if (token_list[n].type_ != TokenType::Identifier){
+            error("expecting identifier",n);
             return Error<size_t>(ErrorType::InvalidSyntax);
         }
         n++;
@@ -106,6 +107,7 @@ Result<size_t> GrammarInterpreter::interpretProcedure(size_t n){
     if (!res.isOk) return res;
     n = res.unwrap();
     if (token_list[n].value_ !=  ";"){
+        error("expecting ';'",n);
         return Error<size_t>(ErrorType::InvalidSyntax);
     }
     return Ok(n+1);
@@ -131,6 +133,7 @@ Result<size_t> GrammarInterpreter::interpretStatement(size_t n){
     if (token_list[n].type_ == TokenType::Identifier){
         n++;
         if (token_list[n].value_ != ":="){
+            error("expecting ':='",n);
             return Error<size_t>(ErrorType::InvalidSyntax);
         }
         Result<size_t> res = interpretExpression(n+1);
@@ -141,6 +144,7 @@ Result<size_t> GrammarInterpreter::interpretStatement(size_t n){
         if (token_list[n].value_ == "call"){
             n++;
             if (token_list[n].type_ != TokenType::Identifier){
+                error("expecting identifier",n);
                 return Error<size_t>(ErrorType::InvalidSyntax);
             }
             return Ok(n+1);
@@ -149,6 +153,7 @@ Result<size_t> GrammarInterpreter::interpretStatement(size_t n){
             if (!res.isOk) return res;
             n = res.unwrap();
             if (token_list[n].value_ != "end"){
+                error("expecting 'end'",n);
                 return Error<size_t>(ErrorType::InvalidSyntax);
             }
             return Ok(n+1);
@@ -157,6 +162,7 @@ Result<size_t> GrammarInterpreter::interpretStatement(size_t n){
             if (!res.isOk) return res;
             n = res.unwrap();
             if (token_list[n].value_ != "then"){
+                error("expecting 'then'",n);
                 return Error<size_t>(ErrorType::InvalidSyntax);
             }
             res = interpretStatement(n+1);
@@ -168,6 +174,7 @@ Result<size_t> GrammarInterpreter::interpretStatement(size_t n){
             if (!res.isOk) return res;
             n = res.unwrap();
             if (token_list[n].value_ != "do"){
+                error("expecting 'do'",n);
                 return Error<size_t>(ErrorType::InvalidSyntax);
             }
             res = interpretStatement(n+1);
@@ -178,6 +185,7 @@ Result<size_t> GrammarInterpreter::interpretStatement(size_t n){
             //support for empty statement
             return Ok(n+1);
         }else{
+            error("expecting statement",n);
             return Error<size_t>(ErrorType::InvalidSyntax);
         }
     }
@@ -216,6 +224,7 @@ Result<size_t> GrammarInterpreter::interpretFactor(size_t n){
         if (!res.isOk) return res;
         n = res.unwrap();
         if (token_list[n].value_ != ")"){
+            error("expecting ')'",n);
             return Error<size_t>(ErrorType::InvalidSyntax);
         }
         return Ok(n+1);
@@ -224,6 +233,7 @@ Result<size_t> GrammarInterpreter::interpretFactor(size_t n){
     }else if (token_list[n].type_ == TokenType::Identifier){
         return Ok(n+1);
     }else {
+        error("expecting factor",n);
         return Error<size_t>(ErrorType::InvalidSyntax);
     }
 }
@@ -239,6 +249,7 @@ Result<size_t> GrammarInterpreter::interpretCondition(size_t n){
         if (!res.isOk) return res;
         n = res.unwrap();
         if (token_list[n].type_ != TokenType::Operator){
+            error("expecting operator",n);
             return Error<size_t>(ErrorType::InvalidSyntax);
         }
         res = interpretExpression(n+1);

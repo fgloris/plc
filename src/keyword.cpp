@@ -125,6 +125,9 @@ Token::operator std::string() const {
             case TokenType::Delimiter:
                 type_str = "Delimiter";
                 goto end;
+            case TokenType::EndOfFile:
+                type_str = "EndOfFile";
+                goto end;
             default:
                 type_str = "Unknown";
                 goto end;

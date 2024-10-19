@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include "keyword.hpp"
 
 namespace plc{
@@ -25,6 +26,7 @@ class GrammarInterpreter{
 
     std::vector<std::string> symbol_table;
     std::vector<Token> token_list;
+    std::filesystem::path log_file;
 };
 
 }
