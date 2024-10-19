@@ -4,7 +4,7 @@
 int main() {
     using namespace plc;
     KeyWordInterpreter k;
-    Result<std::vector<Token>> res = k.interpretFile("../resource/example-2.pl");
+    Result<std::vector<Token>> res = k.interpretFile("../resource/example.pl");
 
     std::cout<<(std::string)res<<std::endl;
     std::vector<Token> token_list = res.unwrap();

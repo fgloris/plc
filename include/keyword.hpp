@@ -17,6 +17,7 @@ enum class TokenType{
     Literal     = 3,
     Delimiter   = 4,
     Operator    = 5,
+    EndOfFile   = 6,
 };
 
 class Token{

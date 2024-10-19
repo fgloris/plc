@@ -68,9 +68,13 @@ Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) no
         while (res != std::regex_replace(res,patten,"$1 $2")){
             res = std::regex_replace(res,patten,"$1 $2");
         }
-        patten = std::regex(": =");
-        res = std::regex_replace(res,patten,":=");
+
+        patten = std::regex("(:|>|<) =");
+        res = std::regex_replace(res,patten,"$1=");
+        patten = std::regex("< >");
+        res = std::regex_replace(res,patten,"<>");
         std::cout<<res<<std::endl;
+
         return Ok(res);
     }catch (std::regex_error& e){
         return Error<std::string>(ErrorType::RegexError);
