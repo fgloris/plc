@@ -12,7 +12,7 @@ KeyWordInterpreter::KeyWordInterpreter(){
     keyword_regex_pair_ = std::vector<std::pair<TokenType, std::string>>();
     keyword_regex_pair_.emplace_back(TokenType::Keyword, "(begin)|(end)|(if)|(then)|(while)|(do)|(procedure)|(call)|(const)|(var)|(odd)");
     keyword_regex_pair_.emplace_back(TokenType::Delimiter, ":=|\\.|;|,|\\(|\\)");
-    keyword_regex_pair_.emplace_back(TokenType::Operator, ">=||<=|<>|>|=|<|\\+|-|/|\\*");
+    keyword_regex_pair_.emplace_back(TokenType::Operator, ">=||<=|<>|>|=|<|\\+|-|/|\\*|#");
     keyword_regex_pair_.emplace_back(TokenType::Literal, "([1-9]\\d*|0)");
     keyword_regex_pair_.emplace_back(TokenType::Identifier, "([[:alpha:]])(\\w)*");
 }

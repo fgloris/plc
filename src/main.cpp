@@ -14,7 +14,7 @@ int main() {
     }
     std::cout<<std::endl;
 
-    GrammarInterpreter g(token_list);
+    GrammarInterpreter g(token_list, "../output/example-log.txt");
     std::cout<<(std::string)g.interpretProgram(0)<<std::endl;
     return 0;
 }

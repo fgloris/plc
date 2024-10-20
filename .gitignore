@@ -1,3 +1,5 @@
 build
 cmake-build-debug
 .idea
+PL0-compiler
+cmake-build-debug
