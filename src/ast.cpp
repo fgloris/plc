@@ -121,7 +121,7 @@ Result<std::string> AST::compile(){
         if (name == "while"){
             code.emplace_back("j","_","_",std::to_string(current_size));
         }
-    }else if (name == "Expression" || name == "Term"){
+    }else if (name == "Calc"){
         if (children.size() <3) return Error<std::string>(ErrorType::CompileError);
         std::string tmp = getTempName();
         code.emplace_back(":=",children[0].name,"_",tmp);

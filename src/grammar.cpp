@@ -259,7 +259,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretExpression(size_t n){
-    AST ast("Expression");
+    AST ast("Calc");
     if (token_list[n].value_ == "+" || token_list[n].value_ == "-"){
         ast.addChild(token_list[n].value_);
         n++;
@@ -283,7 +283,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretExpression(size_t n){
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretTerm(size_t n){
-    AST ast("Term");
+    AST ast("Calc");
     while (1){
         Result<std::pair<size_t,AST>> res = interpretFactor(n);
         if (!res.isOk) return res;
