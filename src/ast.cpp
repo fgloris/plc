@@ -2,7 +2,7 @@
 
 namespace plc {
 size_t AST::temp_name = 0;
-std::vector<Quaternary> AST::code{Quaternary("j","_","_","1")};
+std::vector<Quaternary> AST::code;
 std::map<std::string,size_t> AST::procedure_line;
 
 Quaternary::Quaternary(std::string cmd, std::string value1, std::string value2, std::string result):
@@ -84,11 +84,14 @@ Result<std::string> AST::compile(){
             if (!res.isOk) return res;
         }
     }else if (name == "Procedure"){
+        size_t current_size = code.size();
+        code.emplace_back("j","_","_",std::to_string(-1));
         procedure_line[children[0].name] = code.size();
         for (AST& child: children){
             Result<std::string> res = child.compile();
             if (!res.isOk) return res;
         }
+        code[current_size].result = std::to_string(code.size());
     }else if (name == "Call"){
         size_t dest = procedure_line[children[0].name];
         code.emplace_back("j","_","_",std::to_string(dest));
@@ -129,12 +132,6 @@ Result<std::string> AST::compile(){
             code.emplace_back(children[i].name,tmp,name,tmp);
         }
         return Ok(tmp);
-    }else if (name == "Main"){
-        code[0].result = std::to_string(code.size());
-        for (AST& child: children){
-            Result<std::string> res = child.compile();
-            if (!res.isOk) return res;
-        }
     }
     return Ok(name);
 }

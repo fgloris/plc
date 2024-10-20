@@ -59,8 +59,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretBlock(size_t n){
             if (!res.isOk) return res;
             std::pair<size_t,AST> pair = res.unwrap();
             n = pair.first;
-            AST main("Main",pair.second);
-            ast.addChild(main);
+            ast.addChild(pair.second);
 
             if (token_list[n].value_ != "end"){
                 error("expecting 'end'",n);
