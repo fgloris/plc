@@ -93,7 +93,7 @@ Result<std::string> AST::compile(){
         size_t dest = procedure_line[children[0].name];
         code.emplace_back("j","_","_",std::to_string(dest));
 
-    }else if (name == "if"){
+    }else if (name == "If" || name == "While"){
         if (children.size() != 2 || children[0].name != "Condition") return Error<std::string>(ErrorType::CompileError);
         size_t current_size = code.size();
         if (children[0].children.size() == 3){
@@ -115,8 +115,9 @@ Result<std::string> AST::compile(){
             children[1].compile();
         }
         code[current_size+1].result = std::to_string(code.size());
-    }else if (name == "while"){
-
+        if (name == "while"){
+            code.emplace_back("j","_","_",std::to_string(current_size));
+        }
     }else if (name == "Expression" || name == "Term"){
         if (children.size() <3) return Error<std::string>(ErrorType::CompileError);
         std::string tmp = getTempName();
@@ -128,11 +129,14 @@ Result<std::string> AST::compile(){
             code.emplace_back(children[i].name,tmp,name,tmp);
         }
         return Ok(tmp);
+    }else if (name == "Main"){
+        code[0].result = std::to_string(code.size());
+        for (AST& child: children){
+            Result<std::string> res = child.compile();
+            if (!res.isOk) return res;
+        }
     }
-    else{
-        return Ok(name);
-    }
-    return Ok(std::string(""));
+    return Ok(name);
 }
 
 Result<std::pair<size_t, AST>> ErrorPair(ErrorType err){

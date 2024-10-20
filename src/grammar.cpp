@@ -59,7 +59,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretBlock(size_t n){
             if (!res.isOk) return res;
             std::pair<size_t,AST> pair = res.unwrap();
             n = pair.first;
-            ast.addChild(pair.second);
+            AST main("Main",pair.second);
+            ast.addChild(main);
 
             if (token_list[n].value_ != "end"){
                 error("expecting 'end'",n);
@@ -217,7 +218,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
             if (!res.isOk) return res;
             std::pair<size_t,AST> pair = res.unwrap();
             n = pair.first;
-            AST ast("if", pair.second);
+            AST ast("If", pair.second);
 
             if (token_list[n].value_ != "then"){
                 error("expecting 'then'",n);
@@ -235,7 +236,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
             if (!res.isOk) return res;
             std::pair<size_t,AST> pair = res.unwrap();
             n = pair.first;
-            AST ast("if", pair.second);
+            AST ast("While", pair.second);
 
             if (token_list[n].value_ != "do"){
                 error("expecting 'do'",n);
