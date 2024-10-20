@@ -18,6 +18,7 @@ private:
 public:
     bool isOk;
     Result() = delete;
+    explicit Result(T res, ErrorType err) : value(res), isOk(false), err(err) {};
     explicit Result(T res) : value(res), isOk(true) {};
     explicit Result(ErrorType err) : err(err), isOk(false) {};
     const T &unwrap() const{

@@ -16,7 +16,7 @@ procedure divide;
     var w;
 begin
     r:=x; q:=0; w:=y;
-    while w<=r do w:=2*w;
+    while w<=r do w:=2*(w+5+7);
     while w>y do
     begin
         q:=2*q; w:=w/2;

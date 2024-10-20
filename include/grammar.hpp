@@ -10,19 +10,19 @@ class GrammarInterpreter{
     GrammarInterpreter(const std::vector<Token>& tokens);
     GrammarInterpreter(const std::vector<Token>& tokens, std::string log_file_name);
 
-    [[nodiscard]] Result<size_t> interpretProgram(size_t n) noexcept;
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretProgram(size_t n) noexcept;
 
     private:
-    [[nodiscard]] Result<size_t> interpretBlock(size_t n);
-    [[nodiscard]] Result<size_t> interpretConstDecl(size_t n);
-    [[nodiscard]] Result<size_t> interpretVarDecl(size_t n);
-    [[nodiscard]] Result<size_t> interpretStatement(size_t n);
-    [[nodiscard]] Result<size_t> interpretStatementSequence(size_t n);
-    [[nodiscard]] Result<size_t> interpretCondition(size_t n);
-    [[nodiscard]] Result<size_t> interpretExpression(size_t n);
-    [[nodiscard]] Result<size_t> interpretTerm(size_t n);
-    [[nodiscard]] Result<size_t> interpretFactor(size_t n);
-    [[nodiscard]] Result<size_t> interpretProcedure(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretBlock(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretConstDecl(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretVarDecl(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretStatement(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretStatementSequence(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretCondition(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretExpression(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretTerm(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretFactor(size_t n);
+    [[nodiscard]] Result<std::pair<size_t,AST>> interpretProcedure(size_t n);
     void error(const std::string& name, size_t n);
 
     std::vector<std::string> symbol_table;

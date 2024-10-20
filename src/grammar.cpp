@@ -25,218 +25,280 @@ void GrammarInterpreter::error(const std::string& name, size_t n){
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretProgram(size_t n) noexcept{
+    AST ast("Program");
     Result<std::pair<size_t,AST>> res = interpretBlock(n);
     if (!res.isOk){
         log_file << "Program failed to interpret." << std::endl;
         return res;
     }
-    
-    n = res.unwrap();
+    std::pair<size_t,AST> pair = res.unwrap();
+    n = pair.first;
+    ast.addChild(pair.second);
     if (token_list.size() >= n && token_list[n].value_ != "."){
         error("expecting '.'",n);
         log_file << "Program failed to interpret." << std::endl;
-        return Error<size_t>(ErrorType::InvalidSyntax);
+        return ErrorPair(ErrorType::InvalidSyntax);
     }
     log_file << "Program successfully interpreted." << std::endl;
+    std::cout<<std::endl;
+    ast.print(log_file);
     log_file.close();
-    return Ok(n);
+    return Ok(std::make_pair(n,ast));
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretBlock(size_t n){
+    AST ast("Block");
     while (token_list[n].value_ != "."){
         std::string& sym = token_list[n].value_;
-        Result<std::pair<size_t,AST>> res = Ok(std::size_t{0});
+        Result<std::pair<size_t,AST>> res = Ok(std::make_pair(std::size_t{0},ast));
         if (sym == "const")     res = interpretConstDecl(n+1);
         else if (sym == "var")  res = interpretVarDecl(n+1);
         else if (sym == "procedure")  res = interpretProcedure(n+1);
         else if (sym == "begin"){
             res = interpretStatementSequence(n+1);
             if (!res.isOk) return res;
-            else n = res.unwrap();
+            std::pair<size_t,AST> pair = res.unwrap();
+            n = pair.first;
+            ast.addChild(pair.second);
+
             if (token_list[n].value_ != "end"){
                 error("expecting 'end'",n);
-                return Error<size_t>(ErrorType::InvalidSyntax);
+                return ErrorPair(ErrorType::InvalidSyntax);
             }
-            return Ok(n+1);
+            return Ok(std::make_pair(n+1,ast));
         }
         else{
             error("invalid symbol",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
 
         if (!res.isOk) return res;
-        else n = res.unwrap();
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
     }
-    return Ok(n);
+    return Ok(std::make_pair(n,ast));
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretConstDecl(size_t n){
+    AST ast("Const");
     while (1){
         if (token_list[n].type_ != TokenType::Identifier){
             error("expecting identifier",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
+        ast.addChild(token_list[n].value_);
         n++;
         if (token_list[n].value_ !=  "="){
             error("expecting '='",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
+        ast.addChild("=");
         n++;
         if (token_list[n].type_ != TokenType::Literal){
             error("expecting literal",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
+        ast.addChild(token_list[n].value_);
         n++;
         if (token_list[n].value_ !=  "," && token_list[n].value_ !=  ";"){
             error("expecting ',' or ';'",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }else if (token_list[n].value_ ==  ";"){
             break;
         }
         n++;
     }
-    return Ok(n+1);
+    return Ok(std::make_pair(n+1,ast));
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretVarDecl(size_t n){
+    AST ast("Var");
     while (1){
         if (token_list[n].type_ != TokenType::Identifier){
             error("expecting identifier",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
+        ast.addChild(token_list[n].value_);
         n++;
         if (token_list[n].value_ !=  "," && token_list[n].value_ !=  ";"){
             error("expecting ',' or ';'",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }else if (token_list[n].value_ ==  ";"){
             break;
         }
         n++;
     }
-    return Ok(n+1);
+    return Ok(std::make_pair(n+1,ast));
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretProcedure(size_t n){
+    AST ast("Procedure");
     if (token_list[n].type_ != TokenType::Identifier){
         error("expecting identifier",n);
-        return Error<size_t>(ErrorType::InvalidSyntax);
+        return ErrorPair(ErrorType::InvalidSyntax);
     }
     n++;
     if (token_list[n].value_ !=  ";"){
         error("expecting ';'",n);
-        return Error<size_t>(ErrorType::InvalidSyntax);
+        return ErrorPair(ErrorType::InvalidSyntax);
     }
     Result<std::pair<size_t,AST>> res = interpretBlock(n+1);
     if (!res.isOk) return res;
-    n = res.unwrap();
+    std::pair<size_t,AST> pair = res.unwrap();
+    n = pair.first;
+    ast.addChild(pair.second);
+
     if (token_list[n].value_ !=  ";"){
         error("expecting ';'",n);
-        return Error<size_t>(ErrorType::InvalidSyntax);
+        return ErrorPair(ErrorType::InvalidSyntax);
     }
-    return Ok(n+1);
+    return Ok(std::make_pair(n+1,ast));
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatementSequence(size_t n){
+    AST ast("Sequence");
     while (1){
         Result<std::pair<size_t,AST>> res = interpretStatement(n);
         if (!res.isOk) return res;
-        n = res.unwrap();
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
+
         if (token_list[n].value_ !=  ";"){
-            return Ok(n);
+            return Ok(std::make_pair(n,ast));
         }
         n++;
         //my own addition
         if (token_list[n].value_ == "end"){
-            return Ok(n);
+            return Ok(std::make_pair(n,ast));
         }
     }
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
     if (token_list[n].type_ == TokenType::Identifier){
+        AST ast("Define", token_list[n].value_);
         n++;
         if (token_list[n].value_ != ":="){
             error("expecting ':='",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
+        ast.addChild(":=");
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        n = res.unwrap();
-        return Ok(n);
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
+
+        return Ok(std::make_pair(n,ast));
     }else{
         if (token_list[n].value_ == "call"){
             n++;
             if (token_list[n].type_ != TokenType::Identifier){
                 error("expecting identifier",n);
-                return Error<size_t>(ErrorType::InvalidSyntax);
+                return ErrorPair(ErrorType::InvalidSyntax);
             }
-            return Ok(n+1);
+            AST ast("Call", token_list[n].value_);
+            return Ok(std::make_pair(n+1,ast));
         }else if (token_list[n].value_ == "begin"){
             Result<std::pair<size_t,AST>> res = interpretStatementSequence(n+1);
             if (!res.isOk) return res;
-            n = res.unwrap();
+            std::pair<size_t,AST> pair = res.unwrap();
+            n = pair.first;
+            AST ast = pair.second;
+
             if (token_list[n].value_ != "end"){
                 error("expecting 'end'",n);
-                return Error<size_t>(ErrorType::InvalidSyntax);
+                return ErrorPair(ErrorType::InvalidSyntax);
             }
-            return Ok(n+1);
+            return Ok(std::make_pair(n+1,ast));
         }else if (token_list[n].value_ == "if"){
             Result<std::pair<size_t,AST>> res = interpretCondition(n+1);
             if (!res.isOk) return res;
-            n = res.unwrap();
+            std::pair<size_t,AST> pair = res.unwrap();
+            n = pair.first;
+            AST ast("if", pair.second);
+
             if (token_list[n].value_ != "then"){
                 error("expecting 'then'",n);
-                return Error<size_t>(ErrorType::InvalidSyntax);
+                return ErrorPair(ErrorType::InvalidSyntax);
             }
             res = interpretStatement(n+1);
             if (!res.isOk) return res;
-            n = res.unwrap();
-            return Ok(n);
+            std::pair<size_t,AST> pair1 = res.unwrap();
+            n = pair1.first;
+            ast.addChild(pair1.second);
+
+            return Ok(std::make_pair(n,ast));
         }else if (token_list[n].value_ == "while"){
             Result<std::pair<size_t,AST>> res = interpretCondition(n+1);
             if (!res.isOk) return res;
-            n = res.unwrap();
+            std::pair<size_t,AST> pair = res.unwrap();
+            n = pair.first;
+            AST ast("if", pair.second);
+
             if (token_list[n].value_ != "do"){
                 error("expecting 'do'",n);
-                return Error<size_t>(ErrorType::InvalidSyntax);
+                return ErrorPair(ErrorType::InvalidSyntax);
             }
             res = interpretStatement(n+1);
             if (!res.isOk) return res;
-            n = res.unwrap();
-            return Ok(n);
+            std::pair<size_t,AST> pair1 = res.unwrap();
+            n = pair1.first;
+            ast.addChild(pair1.second);
+
+            return Ok(std::make_pair(n,ast));
         }else if (token_list[n].value_ == ";"){
             //support for empty statement
-            return Ok(n+1);
+            return Ok(std::make_pair(n+1,AST("EmptyStatement")));
         }else{
             error("expecting statement",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
     }
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretExpression(size_t n){
+    AST ast("Expression");
     if (token_list[n].value_ == "+" || token_list[n].value_ == "-"){
+        ast.addChild(token_list[n].value_);
         n++;
     }
     while (1){
         Result<std::pair<size_t,AST>> res = interpretTerm(n);
         if (!res.isOk) return res;
-        n = res.unwrap();
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
+
         if (token_list[n].value_ != "+" && token_list[n].value_ != "-"){
-            return Ok(n);
+            if (ast.children.size() == 1){
+                return Ok(std::make_pair(n,ast.children[0]));
+            }
+            else return Ok(std::make_pair(n,ast));
         }
+        ast.addChild(token_list[n].value_);
         n++;
     }
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretTerm(size_t n){
+    AST ast("Term");
     while (1){
         Result<std::pair<size_t,AST>> res = interpretFactor(n);
         if (!res.isOk) return res;
-        n = res.unwrap();
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
+
         if (token_list[n].value_ != "*" && token_list[n].value_ != "/"){
-            return Ok(n);
+            if (ast.children.size() == 1){
+                return Ok(std::make_pair(n,ast.children[0]));
+            }
+            else return Ok(std::make_pair(n,ast));
         }
+        ast.addChild(token_list[n].value_);
         n++;
     }
 }
@@ -245,40 +307,54 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretFactor(size_t n){
     if (token_list[n].value_ == "("){
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        n = res.unwrap();
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
         if (token_list[n].value_ != ")"){
             error("expecting ')'",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
-        return Ok(n+1);
+        return Ok(std::make_pair(n+1,pair.second));
     }else if (token_list[n].type_ == TokenType::Literal){
-        return Ok(n+1);
+        return Ok(std::make_pair(n+1,AST(token_list[n].value_)));
     }else if (token_list[n].type_ == TokenType::Identifier){
-        return Ok(n+1);
+        return Ok(std::make_pair(n+1,AST(token_list[n].value_)));
     }else {
         error("expecting factor",n);
-        return Error<size_t>(ErrorType::InvalidSyntax);
+        return ErrorPair(ErrorType::InvalidSyntax);
     }
 }
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretCondition(size_t n){
+    AST ast("Condition");
     if (token_list[n].value_ == "odd"){
+        ast.addChild("odd");
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        n = res.unwrap();
-        return Ok(n);
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
+
+        return Ok(std::make_pair(n,ast));
     }else{
         Result<std::pair<size_t,AST>> res = interpretExpression(n);
         if (!res.isOk) return res;
-        n = res.unwrap();
+        std::pair<size_t,AST> pair = res.unwrap();
+        n = pair.first;
+        ast.addChild(pair.second);
+
         if (token_list[n].type_ != TokenType::Operator){
             error("expecting operator",n);
-            return Error<size_t>(ErrorType::InvalidSyntax);
+            return ErrorPair(ErrorType::InvalidSyntax);
         }
+        ast.addChild(token_list[n].value_);
+
         res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        n = res.unwrap();
-        return Ok(n);
+        std::pair<size_t,AST> pair1 = res.unwrap();
+        n = pair1.first;
+        ast.addChild(pair1.second);
+
+        return Ok(std::make_pair(n,ast));
     }
 }
 
