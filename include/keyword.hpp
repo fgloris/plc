@@ -37,10 +37,10 @@ class KeyWordInterpreter{
 
     [[nodiscard]] Result<Token> interpret(const std::string &input) const noexcept;
     [[nodiscard]] Result<Token> interpretCheckAmbiguity(const std::string &input) const noexcept;
-    [[nodiscard]] Result<std::vector<Token>> interpretStream(const std::string &input) const noexcept;
+    [[nodiscard]] Result<std::vector<Token>> interpretString(const std::string &input) const noexcept;
     [[nodiscard]] Result<std::vector<Token>> interpretFile(const std::string &filename) const noexcept;
 
-    static Result<std::string> splitStream(const std::string &input) noexcept;
+    static Result<std::string> splitString(const std::string &input) noexcept;
 
     public:
     std::vector<std::pair<TokenType, std::string>> keyword_regex_pair_;

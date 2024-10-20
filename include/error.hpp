@@ -8,6 +8,7 @@ enum class ErrorType{
     InvalidSyntax,
     RegexError,
     IOError,
+    CompileError,
 };
 
 template <class T>
@@ -46,6 +47,8 @@ public:
                     goto end;
                 case ErrorType::IOError:
                     errstring = "IOError";
+                case ErrorType::CompileError:
+                    errstring = "CompileError";
             }
             end: return "Error(" + errstring + ")";
         }

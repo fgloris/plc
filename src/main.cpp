@@ -15,6 +15,14 @@ int main() {
     std::cout<<std::endl;
 
     GrammarInterpreter g(token_list, "../output/example-log.txt");
-    std::cout<<(std::string)g.interpretProgram(0)<<std::endl;
+    Result<std::pair<size_t,AST>> res2 = g.interpretProgram(0);
+    std::cout<<std::endl<<(std::string)res2<<std::endl;
+
+    std::pair<size_t,AST> pair = res2.unwrap();
+    AST ast = pair.second;
+    ast.compile();
+    std::cout<<(std::string)ast.output("../output/example-code.txt")<<std::endl;
+
+
     return 0;
 }

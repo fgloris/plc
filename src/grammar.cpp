@@ -93,7 +93,6 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretConstDecl(size_t n){
             error("expecting '='",n);
             return ErrorPair(ErrorType::InvalidSyntax);
         }
-        ast.addChild("=");
         n++;
         if (token_list[n].type_ != TokenType::Literal){
             error("expecting literal",n);
@@ -138,6 +137,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretProcedure(size_t n){
         error("expecting identifier",n);
         return ErrorPair(ErrorType::InvalidSyntax);
     }
+    ast.addChild(token_list[n].value_);
     n++;
     if (token_list[n].value_ !=  ";"){
         error("expecting ';'",n);
@@ -184,7 +184,6 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
             error("expecting ':='",n);
             return ErrorPair(ErrorType::InvalidSyntax);
         }
-        ast.addChild(":=");
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
         std::pair<size_t,AST> pair = res.unwrap();

@@ -53,7 +53,7 @@ Result<Token> KeyWordInterpreter::interpretCheckAmbiguity(const std::string &inp
     return res;
 }
 
-Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) noexcept{
+Result<std::string> KeyWordInterpreter::splitString(const std::string &input) noexcept{
     try{
         std::regex patten = std::regex("([^a-zA-Z0-9_ ])([^a-zA-Z0-9_ ])");
         std::string res = std::regex_replace(input,patten,"$1 $2");
@@ -81,8 +81,8 @@ Result<std::string> KeyWordInterpreter::splitStream(const std::string &input) no
     }
 }
 
-Result<std::vector<Token>> KeyWordInterpreter::interpretStream(const std::string &input) const noexcept{
-    Result<std::string> spl = splitStream(input);
+Result<std::vector<Token>> KeyWordInterpreter::interpretString(const std::string &input) const noexcept{
+    Result<std::string> spl = splitString(input);
     if (!spl.isOk) {return Error<std::vector<Token>>(spl);}
     std::stringstream stream(spl.unwrap());
     std::string w;
@@ -100,7 +100,7 @@ Result<std::vector<Token>> KeyWordInterpreter::interpretFile(const std::string &
     if (!f) return Result<std::vector<Token>>(ErrorType::IOError);
     std::stringstream stream;
     stream << f.rdbuf();
-    return interpretStream(stream.str());
+    return interpretString(stream.str());
 }
 
 bool Token::operator==(const Token &other) const{
