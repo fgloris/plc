@@ -4,6 +4,12 @@
 
 namespace plc{
 
+enum class IdentType{
+    ProcedureIdent,
+    ConstIdent,
+    VarIdent,
+};
+
 class GrammarInterpreter{
     public:
     GrammarInterpreter() = default;
@@ -25,7 +31,7 @@ class GrammarInterpreter{
     [[nodiscard]] Result<std::pair<size_t,AST>> interpretProcedure(size_t n);
     void error(const std::string& name, size_t n);
 
-    std::vector<std::string> symbol_table;
+    std::vector<std::pair<IdentType,std::string>> symbol_table;
     std::vector<Token> token_list;
     std::ofstream log_file;
 };

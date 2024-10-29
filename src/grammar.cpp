@@ -87,6 +87,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretConstDecl(size_t n){
             error("expecting identifier",n);
             return ErrorPair(ErrorType::InvalidSyntax);
         }
+        symbol_table.emplace_back(IdentType::ConstIdent,token_list[n].value_);
         ast.addChild(token_list[n].value_);
         n++;
         if (token_list[n].value_ !=  "="){
@@ -118,6 +119,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretVarDecl(size_t n){
             error("expecting identifier",n);
             return ErrorPair(ErrorType::InvalidSyntax);
         }
+        symbol_table.emplace_back(IdentType::VarIdent,token_list[n].value_);
         ast.addChild(token_list[n].value_);
         n++;
         if (token_list[n].value_ !=  "," && token_list[n].value_ !=  ";"){
@@ -137,6 +139,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretProcedure(size_t n){
         error("expecting identifier",n);
         return ErrorPair(ErrorType::InvalidSyntax);
     }
+    symbol_table.emplace_back(IdentType::ProcedureIdent,token_list[n].value_);
     ast.addChild(token_list[n].value_);
     n++;
     if (token_list[n].value_ !=  ";"){
@@ -179,6 +182,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatementSequence(siz
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
     if (token_list[n].type_ == TokenType::Identifier){
         AST ast("Define", token_list[n].value_);
+        symbol_table.emplace_back(IdentType::VarIdent,token_list[n].value_);
         n++;
         if (token_list[n].value_ != ":="){
             error("expecting ':='",n);
@@ -196,6 +200,10 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
             n++;
             if (token_list[n].type_ != TokenType::Identifier){
                 error("expecting identifier",n);
+                return ErrorPair(ErrorType::InvalidSyntax);
+            }
+            if (std::find(symbol_table.begin(), symbol_table.end(), std::make_pair(IdentType::ProcedureIdent, token_list[n].value_)) == std::end(symbol_table)){
+                error("identifier use before defination" ,n);
                 return ErrorPair(ErrorType::InvalidSyntax);
             }
             AST ast("Call", token_list[n].value_);
@@ -316,6 +324,11 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretFactor(size_t n){
     }else if (token_list[n].type_ == TokenType::Literal){
         return Ok(std::make_pair(n+1,AST(token_list[n].value_)));
     }else if (token_list[n].type_ == TokenType::Identifier){
+        if (std::find(symbol_table.begin(), symbol_table.end(), std::make_pair(IdentType::ConstIdent, token_list[n].value_)) == std::end(symbol_table)
+         && std::find(symbol_table.begin(), symbol_table.end(), std::make_pair(IdentType::VarIdent, token_list[n].value_)) == std::end(symbol_table)){
+            error("identifier use before defination" ,n);
+            return ErrorPair(ErrorType::InvalidSyntax);
+        }
         return Ok(std::make_pair(n+1,AST(token_list[n].value_)));
     }else {
         error("expecting factor",n);

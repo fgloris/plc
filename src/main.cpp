@@ -23,6 +23,5 @@ int main() {
     ast.compile();
     std::cout<<(std::string)ast.output("../output/example-code.txt")<<std::endl;
 
-
     return 0;
 }
