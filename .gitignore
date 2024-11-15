@@ -1,4 +1,5 @@
 build
+output
 cmake-build-debug
 .idea
 PL0-compiler
