@@ -181,7 +181,7 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatementSequence(siz
 
 Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
     if (token_list[n].type_ == TokenType::Identifier){
-        AST ast("Define", token_list[n].value_);
+        AST ast("Assign", token_list[n].value_);
         symbol_table.emplace_back(IdentType::VarIdent,token_list[n].value_);
         n++;
         if (token_list[n].value_ != ":="){

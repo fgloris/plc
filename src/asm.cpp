@@ -9,11 +9,25 @@ Label::operator std::string() const{
 
 }
 
+bool Label::operator==(const Label& other) const{
+    return name == other.name;
+}
+
+template<>
+MacroConstant<int>::MacroConstant(const std::string& name, const int& value):name(name),value(value){}
+
+Section::Section(const std::string& name):name(name){}
+
 Section::operator std::string() const{
     std::string res = "section" + name;
 }
 
-NASMLinuxELF64::NASMLinuxELF64():text.name(".text"),bss.name(".bss"),data.name(".data"){
+void Section::addLine(size_t label_ptr, const std::string& line){
+    if (label_ptr >= labels.size()) return;
+    labels[label_ptr].lines.emplace_back(line);
+}
+
+NASMLinuxELF64::NASMLinuxELF64():text(".text"),bss(".bss"),data(".data"){
     text.labels.emplace_back("_start");
     text.labels[0].lines.emplace_back("global _start");
 }
@@ -21,21 +35,26 @@ NASMLinuxELF64::NASMLinuxELF64():text.name(".text"),bss.name(".bss"),data.name("
 Result<int> NASMLinuxELF64::generate(const AST& input, size_t label_ptr){
     const std::string& name = input.name;
     if (name == "Var"){
-    }else if (name == "Const"){
         
-    }else if (name == "Define"){
+    }else if (name == "Const"){
+        constants.emplace_back(input.name, std::stoi(input.children[0].name));
+    }else if (name == "Assign"){
         
     }else if (name == "Program" || name == "Block" || name == "Sequence"){
         
     }else if (name == "Procedure"){
-        size_t label_ptr = text.labels.size();
         text.labels.emplace_back(input.children[0].name);
-        for (const AST& child: input.children){
-            Result<int> res = generate(child, label_ptr);
+        size_t child_label_ptr = text.labels.size();
+        for (size_t i = 1; i < input.children.size(); i++){
+            const AST& child = input.children[i];
+            Result<int> res = generate(child, child_label_ptr);
             if (!res.isOk) return res;
         }
     }else if (name == "Call"){
-        
+        if (std::find(text.labels.begin(), text.labels.end(), input.children[0].name) == text.labels.end()){
+            return Error<int>(ErrorType::SymbolLookupError);
+        }
+        text.addLine(label_ptr, "call "+input.children[0].name);
     }else if (name == "If" || name == "While"){
         
     }else if (name == "Calc"){

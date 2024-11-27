@@ -112,26 +112,26 @@ Token::operator std::string() const {
         switch(type_){
             case TokenType::Keyword:
                 type_str = "Keyword";
-                goto end;
+                break;
             case TokenType::Identifier:
                 type_str = "Identifier";
-                goto end;
+                break;
             case TokenType::Literal:
                 type_str = "Literal";
-                goto end;
+                break;
             case TokenType::Operator:
                 type_str = "Operator";
-                goto end;
+                break;
             case TokenType::Delimiter:
                 type_str = "Delimiter";
-                goto end;
+                break;
             case TokenType::EndOfFile:
                 type_str = "EndOfFile";
-                goto end;
+                break;
             default:
                 type_str = "Unknown";
-                goto end;
+                break;
         }
-        end:return type_str+"(" + value_ + ")";
+        return type_str+"(" + value_ + ")";
     }
 }

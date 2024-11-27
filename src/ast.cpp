@@ -71,7 +71,7 @@ Result<std::string> AST::compile(){
         for (size_t i=0; i<children.size(); i+=2) {
             code.emplace_back(":=",children[i+1].name,"_",children[i].name);
         }
-    }else if (name == "Define"){
+    }else if (name == "Assign"){
         for (size_t i=0; i<children.size(); i+=2) {
             Result<std::string> res = children[i+1].compile();
             if (!res.isOk) return res;

@@ -9,6 +9,7 @@ enum class ErrorType{
     RegexError,
     IOError,
     CompileError,
+    SymbolLookupError,
 };
 
 template <class T>
@@ -35,22 +36,22 @@ public:
             switch(err){
                 case ErrorType::Ambiguity:
                     errstring = "Ambiguity";
-                    goto end;
+                    break;
                 case ErrorType::InvalidSyntax:
                     errstring = "InvalidSyntax";
-                    goto end;
+                    break;
                 case ErrorType::Empty:
                     errstring = "Empty";
-                    goto end;
+                    break;
                 case ErrorType::RegexError:
                     errstring = "RegexError";
-                    goto end;
+                    break;
                 case ErrorType::IOError:
                     errstring = "IOError";
                 case ErrorType::CompileError:
                     errstring = "CompileError";
             }
-            end: return "Error(" + errstring + ")";
+            return "Error(" + errstring + ")";
         }
     }
 };
