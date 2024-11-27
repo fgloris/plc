@@ -90,7 +90,7 @@ Result<std::vector<Token>> KeyWordInterpreter::interpretString(const std::string
     while (stream >> w){
         Result<Token> token_res = interpret(w);
         if (!token_res.isOk) return Error<std::vector<Token>>(token_res);
-        res.emplace_back(token_res.unwrap());
+        res.emplace_back(*token_res);
     }
     return Ok(res);
 }

@@ -1,5 +1,6 @@
 #include <iostream>
-#include "../include/grammar.hpp"
+#include <grammar.hpp>
+#include <asm.hpp>
 
 int main() {
     using namespace plc;
@@ -22,6 +23,12 @@ int main() {
     AST ast = pair.second;
     ast.compile();
     std::cout<<(std::string)ast.output("../output/example-code.txt")<<std::endl;
+
+    std::cout<<std::endl;
+
+    NASMLinuxELF64 compiler;
+    Result<std::string> res3 = compiler.generate(ast);
+    std::cout<<res3.unwrap()<<std::endl;
 
     return 0;
 }

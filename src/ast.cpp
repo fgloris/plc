@@ -75,8 +75,7 @@ Result<std::string> AST::compile(){
         for (size_t i=0; i<children.size(); i+=2) {
             Result<std::string> res = children[i+1].compile();
             if (!res.isOk) return res;
-            std::string temp_name = res.unwrap();
-            code.emplace_back(":=",temp_name,"_",children[i].name);
+            code.emplace_back(":=",*res,"_",children[i].name);
         }
     }else if (name == "Program" || name == "Block" || name == "Sequence"){
         for (AST& child: children){
@@ -104,16 +103,13 @@ Result<std::string> AST::compile(){
             Result<std::string> res2 = children[0].children[2].compile();
             if (!res1.isOk) return res1;
             if (!res2.isOk) return res2;
-            std::string tmp1 = res1.unwrap();
-            std::string tmp2 = res2.unwrap();
-            code.emplace_back("j"+children[0].children[1].name,tmp1,tmp2,std::to_string(current_size+2));
+            code.emplace_back("j"+children[0].children[1].name,*res1,*res2,std::to_string(current_size+2));
             code.emplace_back("j","_","_",std::to_string(current_size+3));
             children[1].compile();
         }else if (children[0].children.size() == 2){
             Result<std::string> res = children[0].children[1].compile();
             if (!res.isOk) return res;
-            std::string tmp = res.unwrap();
-            code.emplace_back("j"+children[0].children[0].name,tmp,"_",std::to_string(current_size+2));
+            code.emplace_back("j"+children[0].children[0].name,*res,"_",std::to_string(current_size+2));
             code.emplace_back("j","_","_",std::to_string(current_size+3));
             children[1].compile();
         }
@@ -128,8 +124,7 @@ Result<std::string> AST::compile(){
         for (size_t i=1; i<children.size(); i+=2){
             Result<std::string> res = children[i+1].compile();
             if (!res.isOk) return res;
-            std::string name = res.unwrap();
-            code.emplace_back(children[i].name,tmp,name,tmp);
+            code.emplace_back(children[i].name,tmp,*res,tmp);
         }
         return Ok(tmp);
     }

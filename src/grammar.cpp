@@ -31,9 +31,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretProgram(size_t n) noe
         log_file << "Program failed to interpret." << std::endl;
         return res;
     }
-    std::pair<size_t,AST> pair = res.unwrap();
-    n = pair.first;
-    ast.addChild(pair.second);
+    n = res->first;
+    ast.addChild(res->second);
     if (token_list.size() >= n && token_list[n].value_ != "."){
         error("expecting '.'",n);
         log_file << "Program failed to interpret." << std::endl;
@@ -57,9 +56,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretBlock(size_t n){
         else if (sym == "begin"){
             res = interpretStatementSequence(n+1);
             if (!res.isOk) return res;
-            std::pair<size_t,AST> pair = res.unwrap();
-            n = pair.first;
-            ast.addChild(pair.second);
+            n = res->first;
+            ast.addChild(res->second);
 
             if (token_list[n].value_ != "end"){
                 error("expecting 'end'",n);
@@ -73,9 +71,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretBlock(size_t n){
         }
 
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
     }
     return Ok(std::make_pair(n,ast));
 }
@@ -148,9 +145,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretProcedure(size_t n){
     }
     Result<std::pair<size_t,AST>> res = interpretBlock(n+1);
     if (!res.isOk) return res;
-    std::pair<size_t,AST> pair = res.unwrap();
-    n = pair.first;
-    ast.addChild(pair.second);
+    n = res->first;
+    ast.addChild(res->second);
 
     if (token_list[n].value_ !=  ";"){
         error("expecting ';'",n);
@@ -164,9 +160,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatementSequence(siz
     while (1){
         Result<std::pair<size_t,AST>> res = interpretStatement(n);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         if (token_list[n].value_ !=  ";"){
             return Ok(std::make_pair(n,ast));
@@ -190,9 +185,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
         }
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         return Ok(std::make_pair(n,ast));
     }else{
@@ -211,9 +205,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
         }else if (token_list[n].value_ == "begin"){
             Result<std::pair<size_t,AST>> res = interpretStatementSequence(n+1);
             if (!res.isOk) return res;
-            std::pair<size_t,AST> pair = res.unwrap();
-            n = pair.first;
-            AST ast = pair.second;
+            n = res->first;
+            AST ast = res->second;
 
             if (token_list[n].value_ != "end"){
                 error("expecting 'end'",n);
@@ -223,9 +216,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
         }else if (token_list[n].value_ == "if"){
             Result<std::pair<size_t,AST>> res = interpretCondition(n+1);
             if (!res.isOk) return res;
-            std::pair<size_t,AST> pair = res.unwrap();
-            n = pair.first;
-            AST ast("If", pair.second);
+            n = res->first;
+            AST ast("If", res->second);
 
             if (token_list[n].value_ != "then"){
                 error("expecting 'then'",n);
@@ -233,17 +225,15 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
             }
             res = interpretStatement(n+1);
             if (!res.isOk) return res;
-            std::pair<size_t,AST> pair1 = res.unwrap();
-            n = pair1.first;
-            ast.addChild(pair1.second);
+            n = res->first;
+            ast.addChild(res->second);
 
             return Ok(std::make_pair(n,ast));
         }else if (token_list[n].value_ == "while"){
             Result<std::pair<size_t,AST>> res = interpretCondition(n+1);
             if (!res.isOk) return res;
-            std::pair<size_t,AST> pair = res.unwrap();
-            n = pair.first;
-            AST ast("While", pair.second);
+            n = res->first;
+            AST ast("While", res->second);
 
             if (token_list[n].value_ != "do"){
                 error("expecting 'do'",n);
@@ -251,9 +241,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretStatement(size_t n){
             }
             res = interpretStatement(n+1);
             if (!res.isOk) return res;
-            std::pair<size_t,AST> pair1 = res.unwrap();
-            n = pair1.first;
-            ast.addChild(pair1.second);
+            n = res->first;
+            ast.addChild(res->second);
 
             return Ok(std::make_pair(n,ast));
         }else if (token_list[n].value_ == ";"){
@@ -275,9 +264,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretExpression(size_t n){
     while (1){
         Result<std::pair<size_t,AST>> res = interpretTerm(n);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         if (token_list[n].value_ != "+" && token_list[n].value_ != "-"){
             if (ast.children.size() == 1){
@@ -295,9 +283,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretTerm(size_t n){
     while (1){
         Result<std::pair<size_t,AST>> res = interpretFactor(n);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         if (token_list[n].value_ != "*" && token_list[n].value_ != "/"){
             if (ast.children.size() == 1){
@@ -314,13 +301,12 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretFactor(size_t n){
     if (token_list[n].value_ == "("){
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
+        n = res->first;
         if (token_list[n].value_ != ")"){
             error("expecting ')'",n);
             return ErrorPair(ErrorType::InvalidSyntax);
         }
-        return Ok(std::make_pair(n+1,pair.second));
+        return Ok(std::make_pair(n+1,res->second));
     }else if (token_list[n].type_ == TokenType::Literal){
         return Ok(std::make_pair(n+1,AST(token_list[n].value_)));
     }else if (token_list[n].type_ == TokenType::Identifier){
@@ -342,17 +328,15 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretCondition(size_t n){
         ast.addChild("odd");
         Result<std::pair<size_t,AST>> res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         return Ok(std::make_pair(n,ast));
     }else{
         Result<std::pair<size_t,AST>> res = interpretExpression(n);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair = res.unwrap();
-        n = pair.first;
-        ast.addChild(pair.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         if (token_list[n].type_ != TokenType::Operator){
             error("expecting operator",n);
@@ -362,9 +346,8 @@ Result<std::pair<size_t,AST>> GrammarInterpreter::interpretCondition(size_t n){
 
         res = interpretExpression(n+1);
         if (!res.isOk) return res;
-        std::pair<size_t,AST> pair1 = res.unwrap();
-        n = pair1.first;
-        ast.addChild(pair1.second);
+        n = res->first;
+        ast.addChild(res->second);
 
         return Ok(std::make_pair(n,ast));
     }

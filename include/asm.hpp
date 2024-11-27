@@ -26,7 +26,7 @@ struct MacroConstant{
     std::string name;
     T value;
     MacroConstant(const std::string& name, const T& value);
-    bool operator==(const MacroConstant<T>& other) const;
+    bool operator==(const std::string& other) const;
 };
 
 class ASMGenerator {
@@ -42,8 +42,14 @@ class NASMLinuxELF64 : public ASMGenerator{
     Result<std::string> generate(const AST& input) override;
     Result<int> generate(const AST& input, const std::string &asmfile, const std::string &objfile, const std::string &exefile) override;
     private:
+    Result<std::string> getVarPos(const std::string& var, bool left = false);
     std::vector<MacroConstant<int>> constants;
+    std::vector<std::string> vars;
     Section text,bss,data;
+};
+
+class WASMWin32 : public ASMGenerator{
+    public:
 };
 
 }

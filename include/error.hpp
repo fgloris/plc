@@ -23,9 +23,17 @@ public:
     explicit Result(T res, ErrorType err) : value(res), isOk(false), err(err) {};
     explicit Result(T res) : value(res), isOk(true) {};
     explicit Result(ErrorType err) : err(err), isOk(false) {};
+    const T operator*() const{
+        if(isOk) return value;
+        else throw std::runtime_error(std::string("attempting to dereference an error result ")+static_cast<std::string>(*this));
+    }
     const T &unwrap() const{
         if(isOk) return value;
         else throw std::runtime_error(std::string("attempting to unwrap an error result ")+static_cast<std::string>(*this));
+    }
+    const T* operator->() const{
+        if(isOk) return &value;
+        else throw std::runtime_error(std::string("attempting to dereference an error result ")+static_cast<std::string>(*this));
     }
     ErrorType unwrapErr(){if (!isOk) return err; else throw std::runtime_error("attempting to get error in an Ok result");}
     explicit operator std::string() const{
