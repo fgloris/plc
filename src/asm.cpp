@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <utility>
 #include "../include/asm.hpp"
 
 namespace plc{
@@ -28,12 +29,13 @@ bool MacroConstant<T>::operator==(const std::string& other) const{
 Section::Section(const std::string& name):name(name){}
 
 Section::operator std::string() const{
+    if (lines.empty() && labels.empty()) return "";
     std::string res = "section " + name + "\n";
     for (const std::string& l:lines){
         res += l + "\n";
     }
     for (const auto& label : labels){
-        res += (std::string)label;
+        res += static_cast<std::string>(label);
     }
     return res;
 }
@@ -43,79 +45,164 @@ void Section::addLine(size_t label_ptr, const std::string& line){
     labels[label_ptr].lines.emplace_back(line);
 }
 
-Result<std::string> NASMLinuxELF64::getVarPos(const std::string& var, bool left){
-    std::vector<std::string>::iterator ptr = std::find(vars.begin(), vars.end(), var);
-    if (ptr == vars.end()){
-        return Error<std::string>(ErrorType::SymbolLookupError);
-    }
-    int pos = std::distance(vars.begin(), ptr)+1;
-    std::string res;
-    if (left){
-        res = "qword [rsp+" + std::to_string(pos*8)+"]";
-    }else res = "[rsp+" + std::to_string(pos*8)+"]";
-    return Ok(res);
+void Section::addFreeScopeLine(const Scope& scope){
+    if (!scope.vars.empty()) addLine(scope.label_ptr, "add rsp,"+std::to_string(8*scope.vars.size()));
 }
 
-NASMLinuxELF64::NASMLinuxELF64():text(".text"),bss(".bss"),data(".data"){
+Scope::Scope():father(nullptr),label_ptr(0){}
+
+Scope::Scope(Scope* father):father(father),label_ptr(father->label_ptr){}
+
+Scope::Scope(Scope* father, size_t label_ptr):father(father),label_ptr(label_ptr){}
+
+void Scope::addVar(const std::string& var){
+    vars.emplace_back(var);
+}
+
+void Scope::addConst(const std::string& name, int value){
+    constants.emplace_back(name, value);
+}
+
+Result<size_t> Scope::findVarPos(const std::string& var) const{
+    if (auto ptr = std::find(vars.begin(), vars.end(), var); ptr!= vars.end()){
+        size_t distance = std::distance(ptr, vars.end());
+        return Ok(distance);
+    }else if (father){
+        Result<size_t> res = father->findVarPos(var);
+        if (res.isOk) return Ok(*res+vars.size());
+        else return res;
+    }
+    return Error<size_t>(ErrorType::SymbolLookupError);
+}
+
+Result<std::string> Scope::findConst(const std::string& con) const{
+    if (auto ptr = std::find(constants.begin(), constants.end(), con); ptr!= constants.end()){
+        return Ok(std::to_string(ptr->value));
+    }else if (father){
+        Result<std::string> res = father->findConst(con);
+        if (res.isOk) return Ok(*res);
+        else return res;
+    }
+    return Error<std::string>(ErrorType::SymbolLookupError);
+}
+
+Result<std::string> Scope::findVar(const std::string& var) const{
+    Result<size_t> pos = findVarPos(var);
+    if (!pos.isOk) return Error<std::string>(pos);
+    return Ok("[rsp+" + std::to_string(*pos*8)+"]");
+}
+
+Result<std::string> Scope::findValue(const std::string& val) const{
+    Result<std::string> res = findConst(val);
+    if (!res.isOk){
+        res = findVar(val);
+        if (!res.isOk) return Error<std::string>(res);
+        return Ok(*res);
+    }return Ok(*res);
+}
+
+NASMLinuxELF64::NASMLinuxELF64():text(".text"),bss(".bss"),data(".data"),temp_label_ptr(0){
     text.labels.emplace_back("_start");
     text.lines.emplace_back("global _start");
 }
 
-Result<int> NASMLinuxELF64::generate(const AST& input, size_t label_ptr){
+std::string NASMLinuxELF64::getTempLabelName(){
+    return "_temp"+std::to_string(temp_label_ptr++);
+}
+
+Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
     const std::string& name = input.name;
     if (name == "Var"){
-        text.addLine(label_ptr, "sub rsp,"+std::to_string(8*input.children.size()));
-        for (size_t i=0;i<input.children.size();i++){
-            vars.emplace_back(input.children[i].name);
+        text.addLine(s.label_ptr, "sub rsp,"+std::to_string(8*input.children.size()));
+        for (const auto & i : input.children){
+            s.addVar(i.name);
         }
     }else if (name == "Const"){
         for (size_t i=0;i<input.children.size();i+=2){
-            constants.emplace_back(input.children[i].name,std::stoi(input.children[i+1].name));
+            s.addConst(input.children[i].name,std::stoi(input.children[i+1].name));
         }
     }else if (name == "Assign"){
-        Result<std::string> var_pos = getVarPos(input.children[0].name, true);
-        if (!var_pos.isOk) return Error<int>(var_pos);
-        std::string value = input.children[1].name;
-        if (auto value_ptr = std::find(constants.begin(), constants.end(), value); value_ptr!= constants.end()){
-            text.addLine(label_ptr, "mov "+*var_pos+","+ std::to_string(value_ptr->value));
+        Result<std::string> lvalue_str = s.findVar(input.children[0].name);
+        if (!lvalue_str.isOk) return Error<int>(lvalue_str);
+        std::string rvalue = input.children[1].name;
+        if (rvalue == "Calc"){
+            Result<int> res = generate(input.children[1], s);
+            if (!res.isOk) return res;
+            text.addLine(s.label_ptr, "mov "+*lvalue_str+",rax");
+            //std::cout<< "Calc" << std::endl;
+            return Ok(0);
         }
-        else if (Result<std::string> res = getVarPos(value, false); res.isOk){
-            text.addLine(label_ptr, "mov "+*var_pos+","+*res);
+        char* p;
+        strtol(rvalue.c_str(), &p, 10);
+        if (!*p){
+            text.addLine(s.label_ptr, "mov qword "+*lvalue_str+","+ rvalue);
+        }else if (Result<std::string> rvalue_str = s.findValue(rvalue); rvalue_str.isOk){
+            text.addLine(s.label_ptr, "mov qword "+*lvalue_str+","+*rvalue_str);
+        }else{
+            return Error<int>(ErrorType::SymbolLookupError);
         }
-    }else if (name == "Program" || name == "Block" || name == "Sequence"){
+    }else if (name == "Program" || name == "Block"){
+        Scope scope(&s);
         for (const AST& child : input.children){
-            Result<int> res = generate(child, label_ptr);
+            Result<int> res = generate(child, scope);
+            if (!res.isOk) return res;
+        }
+        text.addFreeScopeLine(scope);
+    }else if (name == "Sequence"){
+        for (const AST& child : input.children){
+            Result<int> res = generate(child, s);
             if (!res.isOk) return res;
         }
     }else if (name == "Procedure"){
+        Scope scope(&s, text.labels.size());
         text.labels.emplace_back(input.children[0].name);
-        size_t child_label_ptr = text.labels.size();
         for (size_t i = 1; i < input.children.size(); i++){
             const AST& child = input.children[i];
-            Result<int> res = generate(child, child_label_ptr);
+            Result<int> res = generate(child, scope);
             if (!res.isOk) return res;
         }
+        text.addFreeScopeLine(scope);
+        text.addLine(scope.label_ptr, "ret");
     }else if (name == "Call"){
         if (std::find(text.labels.begin(), text.labels.end(), input.children[0].name) == text.labels.end()){
             return Error<int>(ErrorType::SymbolLookupError);
         }
-        text.addLine(label_ptr, "call "+input.children[0].name);
-    }else if (name == "If" || name == "While"){
+        text.addLine(s.label_ptr, "call "+input.children[0].name);
+    }else if (name == "If"){
         
+    }else if (name == "While"){
     }else if (name == "Calc"){
-        
-    }
+        if (input.children.size() <3) return Error<int>(ErrorType::CompileError);
+        Result<std::string> first_value = s.findValue(input.children[0].name);
+        if (!first_value.isOk) return Error<int>(first_value);
+        text.addLine(s.label_ptr, "mov rax,"+*first_value);
+
+        for (size_t i=1; i<input.children.size(); i+=2){
+            const std::string& operand = input.children[i].name;
+            Result<std::string> value = s.findValue(input.children[i+1].name);
+            if (!value.isOk) return Error<int>(value);
+            if (operand=="+"){
+                text.addLine(s.label_ptr, "add rax,"+*value);
+            }else if (operand=="-"){
+                text.addLine(s.label_ptr, "sub rax,"+*value);
+            }else if (operand=="*"){
+                text.addLine(s.label_ptr, "mul "+*value);
+            }else if (operand=="/"){
+                text.addLine(s.label_ptr, "add "+*value);
+            }
+        }
+    }else return Error<int>(ErrorType::InvalidSyntax);
     return Ok(0);
-    return Error<int>(ErrorType::InvalidSyntax);
 }
 
 Result<std::string> NASMLinuxELF64::generate(const AST& input){
-    Result<int> res = generate(input,0);
+    Scope global_scope;
+    Result<int> res = generate(input,global_scope);
     if (!res.isOk) return Error<std::string>(res);
-    std::string res_str = "";
-    res_str += (std::string)text;
-    res_str += (std::string)bss;
-    res_str += (std::string)data;
+    std::string res_str;
+    res_str += static_cast<std::string>(text);
+    res_str += static_cast<std::string>(bss);
+    res_str += static_cast<std::string>(data);
     return Ok(res_str);
 }
 

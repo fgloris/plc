@@ -23,7 +23,7 @@ public:
     explicit Result(T res, ErrorType err) : value(res), isOk(false), err(err) {};
     explicit Result(T res) : value(res), isOk(true) {};
     explicit Result(ErrorType err) : err(err), isOk(false) {};
-    const T operator*() const{
+    T operator*() const{
         if(isOk) return value;
         else throw std::runtime_error(std::string("attempting to dereference an error result ")+static_cast<std::string>(*this));
     }
@@ -38,7 +38,7 @@ public:
     ErrorType unwrapErr(){if (!isOk) return err; else throw std::runtime_error("attempting to get error in an Ok result");}
     explicit operator std::string() const{
         if (isOk){
-            return std::string("Ok()");
+            return "Ok()";
         }else{
             std::string errstring;
             switch(err){
@@ -56,8 +56,12 @@ public:
                     break;
                 case ErrorType::IOError:
                     errstring = "IOError";
+                    break;
                 case ErrorType::CompileError:
                     errstring = "CompileError";
+                    break;
+                case ErrorType::SymbolLookupError:
+                    errstring = "SymbolLookupError";
             }
             return "Error(" + errstring + ")";
         }

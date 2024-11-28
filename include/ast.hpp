@@ -21,8 +21,8 @@ public:
     void addChild(AST child);
     void addChild(std::string childname);
     void print(std::ofstream& log_file) const;
-    Result<std::string> compile();
-    Result<size_t> output(std::string log_file_name) const;
+    [[nodiscard]] Result<std::string> getQuaternary();
+    [[nodiscard]] Result<size_t> output(std::string log_file_name) const;
     static std::string getTempName();
 
 public:

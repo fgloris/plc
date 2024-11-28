@@ -13,7 +13,7 @@ enum class IdentType{
 class GrammarInterpreter{
     public:
     GrammarInterpreter() = default;
-    GrammarInterpreter(const std::vector<Token>& tokens);
+    explicit GrammarInterpreter(const std::vector<Token>& tokens);
     GrammarInterpreter(const std::vector<Token>& tokens, std::string log_file_name);
 
     [[nodiscard]] Result<std::pair<size_t,AST>> interpretProgram(size_t n) noexcept;

@@ -16,24 +16,24 @@ std::string AST::getTempName(){
     return "T" + std::to_string(temp_name++);
 }
 
-AST::AST(std::string name) : name(name) {}
-AST::AST(std::string name, AST child1) : name(name) {
+AST::AST(std::string name) : name(std::move(name)) {}
+AST::AST(std::string name, AST child1) : name(std::move(name)) {
     children.push_back(std::move(child1));
 }
-AST::AST(std::string name, AST child1, AST child2) : name(name) {
+AST::AST(std::string name, AST child1, AST child2) : name(std::move(name)) {
     children.push_back(std::move(child1));
     children.push_back(std::move(child2));
 }
-AST::AST(std::string name, AST child1, AST child2, AST child3) : name(name) {
+AST::AST(std::string name, AST child1, AST child2, AST child3) : name(std::move(name)) {
     children.push_back(std::move(child1));
     children.push_back(std::move(child2));
     children.push_back(std::move(child3));
 }
 
-AST::AST(std::string name, std::vector<AST> children) : name(name), children(std::move(children)) {}
+AST::AST(std::string name, std::vector<AST> children) : name(std::move(name)), children(std::move(children)) {}
 
 void AST::addChild(AST child) {children.push_back(std::move(child));}
-void AST::addChild(std::string childname) {children.push_back(std::move(childname));}
+void AST::addChild(std::string childname) {children.emplace_back(std::move(childname));}
 
 void AST::print(std::ofstream& log_file) const {
     if (children.empty()) {
@@ -64,7 +64,7 @@ Result<size_t> AST::output(std::string log_file_name) const{
     return Ok(n);
 }
 
-Result<std::string> AST::compile(){
+Result<std::string> AST::getQuaternary(){
     if (name == "Var"){
         for (auto& child : children) code.emplace_back(":=","_","_",child.name);
     }else if (name == "Const"){
@@ -73,13 +73,13 @@ Result<std::string> AST::compile(){
         }
     }else if (name == "Assign"){
         for (size_t i=0; i<children.size(); i+=2) {
-            Result<std::string> res = children[i+1].compile();
+            Result<std::string> res = children[i+1].getQuaternary();
             if (!res.isOk) return res;
             code.emplace_back(":=",*res,"_",children[i].name);
         }
     }else if (name == "Program" || name == "Block" || name == "Sequence"){
         for (AST& child: children){
-            Result<std::string> res = child.compile();
+            Result<std::string> res = child.getQuaternary();
             if (!res.isOk) return res;
         }
     }else if (name == "Procedure"){
@@ -87,7 +87,7 @@ Result<std::string> AST::compile(){
         code.emplace_back("j","_","_",std::to_string(-1));
         procedure_line[children[0].name] = code.size();
         for (AST& child: children){
-            Result<std::string> res = child.compile();
+            Result<std::string> res = child.getQuaternary();
             if (!res.isOk) return res;
         }
         code[current_size].result = std::to_string(code.size());
@@ -99,19 +99,19 @@ Result<std::string> AST::compile(){
         if (children.size() != 2 || children[0].name != "Condition") return Error<std::string>(ErrorType::CompileError);
         size_t current_size = code.size();
         if (children[0].children.size() == 3){
-            Result<std::string> res1 = children[0].children[0].compile();
-            Result<std::string> res2 = children[0].children[2].compile();
+            Result<std::string> res1 = children[0].children[0].getQuaternary();
+            Result<std::string> res2 = children[0].children[2].getQuaternary();
             if (!res1.isOk) return res1;
             if (!res2.isOk) return res2;
             code.emplace_back("j"+children[0].children[1].name,*res1,*res2,std::to_string(current_size+2));
             code.emplace_back("j","_","_",std::to_string(current_size+3));
-            children[1].compile();
+            children[1].getQuaternary();
         }else if (children[0].children.size() == 2){
-            Result<std::string> res = children[0].children[1].compile();
+            Result<std::string> res = children[0].children[1].getQuaternary();
             if (!res.isOk) return res;
             code.emplace_back("j"+children[0].children[0].name,*res,"_",std::to_string(current_size+2));
             code.emplace_back("j","_","_",std::to_string(current_size+3));
-            children[1].compile();
+            children[1].getQuaternary();
         }
         code[current_size+1].result = std::to_string(code.size());
         if (name == "while"){
@@ -122,7 +122,7 @@ Result<std::string> AST::compile(){
         std::string tmp = getTempName();
         code.emplace_back(":=",children[0].name,"_",tmp);
         for (size_t i=1; i<children.size(); i+=2){
-            Result<std::string> res = children[i+1].compile();
+            Result<std::string> res = children[i+1].getQuaternary();
             if (!res.isOk) return res;
             code.emplace_back(children[i].name,tmp,*res,tmp);
         }
