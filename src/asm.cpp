@@ -46,7 +46,11 @@ void Section::addLine(size_t label_ptr, const std::string& line){
 }
 
 void Section::addFreeScopeLine(const Scope& scope){
-    if (!scope.vars.empty()) addLine(scope.label_ptr, "add rsp,"+std::to_string(8*scope.vars.size()));
+    if (!scope.vars.empty()) {
+        size_t free_size = scope.vars.size();
+        if (scope.vars[0]=="ret") free_size-=1;
+        if (free_size) addLine(scope.label_ptr, "add rsp,"+std::to_string(8*free_size));
+    }
 }
 
 Scope::Scope():father(nullptr),label_ptr(0){}
@@ -65,7 +69,7 @@ void Scope::addConst(const std::string& name, int value){
 
 Result<size_t> Scope::findVarPos(const std::string& var) const{
     if (auto ptr = std::find(vars.begin(), vars.end(), var); ptr!= vars.end()){
-        size_t distance = std::distance(ptr, vars.end());
+        size_t distance = std::distance(ptr, vars.end()) - 1;
         return Ok(distance);
     }else if (father){
         Result<size_t> res = father->findVarPos(var);
@@ -89,6 +93,7 @@ Result<std::string> Scope::findConst(const std::string& con) const{
 Result<std::string> Scope::findVar(const std::string& var) const{
     Result<size_t> pos = findVarPos(var);
     if (!pos.isOk) return Error<std::string>(pos);
+    if (*pos == 0) return Ok(std::string("[rsp]"));
     return Ok("[rsp+" + std::to_string(*pos*8)+"]");
 }
 
@@ -128,20 +133,31 @@ Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
         if (rvalue == "Calc"){
             Result<int> res = generate(input.children[1], s);
             if (!res.isOk) return res;
-            text.addLine(s.label_ptr, "mov "+*lvalue_str+",rax");
-            //std::cout<< "Calc" << std::endl;
+            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+",rax");
             return Ok(0);
         }
         char* p;
         strtol(rvalue.c_str(), &p, 10);
         if (!*p){
-            text.addLine(s.label_ptr, "mov qword "+*lvalue_str+","+ rvalue);
-        }else if (Result<std::string> rvalue_str = s.findValue(rvalue); rvalue_str.isOk){
-            text.addLine(s.label_ptr, "mov qword "+*lvalue_str+","+*rvalue_str);
+            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+","+ rvalue);
+        }else if (Result<std::string> rvalue_str = s.findVar(rvalue); rvalue_str.isOk){
+            text.addLine(s.label_ptr, "mov rax,"+*rvalue_str);
+            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+",rax");
+        }else if (Result<std::string> rvalue_str = s.findConst(rvalue); rvalue_str.isOk){
+            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+","+*rvalue_str);
         }else{
             return Error<int>(ErrorType::SymbolLookupError);
         }
-    }else if (name == "Program" || name == "Block"){
+    }else if (name == "Program"){
+        for (const AST& child : input.children){
+            Result<int> res = generate(child, s);
+            if (!res.isOk) return res;
+        }
+        text.addFreeScopeLine(s);
+        text.addLine(s.label_ptr, "mov rax,60");
+        text.addLine(s.label_ptr, "xor rdi,rdi");
+        text.addLine(s.label_ptr, "syscall");
+    }else if (name == "Block"){
         Scope scope(&s);
         for (const AST& child : input.children){
             Result<int> res = generate(child, scope);
@@ -155,6 +171,7 @@ Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
         }
     }else if (name == "Procedure"){
         Scope scope(&s, text.labels.size());
+        scope.addVar("ret");
         text.labels.emplace_back(input.children[0].name);
         for (size_t i = 1; i < input.children.size(); i++){
             const AST& child = input.children[i];
@@ -179,16 +196,32 @@ Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
 
         for (size_t i=1; i<input.children.size(); i+=2){
             const std::string& operand = input.children[i].name;
-            Result<std::string> value = s.findValue(input.children[i+1].name);
-            if (!value.isOk) return Error<int>(value);
-            if (operand=="+"){
-                text.addLine(s.label_ptr, "add rax,"+*value);
-            }else if (operand=="-"){
-                text.addLine(s.label_ptr, "sub rax,"+*value);
-            }else if (operand=="*"){
-                text.addLine(s.label_ptr, "mul "+*value);
-            }else if (operand=="/"){
-                text.addLine(s.label_ptr, "add "+*value);
+            Result<std::string> value = s.findVar(input.children[i+1].name);
+
+            if (!value.isOk) {
+                value = s.findConst(input.children[i+1].name);
+                if (!value.isOk) return Error<int>(value);
+                if (operand=="+"){
+                    text.addLine(s.label_ptr, "add rax,"+*value);
+                }else if (operand=="-"){
+                    text.addLine(s.label_ptr, "sub rax,"+*value);
+                }else if (operand=="*"){
+                    text.addLine(s.label_ptr, "mov rbx,"+*value);
+                    text.addLine(s.label_ptr, "imul rbx");
+                }else if (operand=="/"){
+                    text.addLine(s.label_ptr, "mov rbx,"+*value);
+                    text.addLine(s.label_ptr, "idiv rbx");
+                }
+            }else{
+                if (operand=="+"){
+                    text.addLine(s.label_ptr, "add rax,"+*value);
+                }else if (operand=="-"){
+                    text.addLine(s.label_ptr, "sub rax,"+*value);
+                }else if (operand=="*"){
+                    text.addLine(s.label_ptr, "imul "+*value);
+                }else if (operand=="/"){
+                    text.addLine(s.label_ptr, "idiv "+*value);
+                }
             }
         }
     }else return Error<int>(ErrorType::InvalidSyntax);
