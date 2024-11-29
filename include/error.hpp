@@ -9,6 +9,7 @@ enum class ErrorType{
     RegexError,
     IOError,
     CompileError,
+    ValueNotFoundError,
     SymbolLookupError,
 };
 
@@ -59,6 +60,9 @@ public:
                     break;
                 case ErrorType::CompileError:
                     errstring = "CompileError";
+                    break;
+                case ErrorType::ValueNotFoundError:
+                    errstring = "ValueNotFoundError";
                     break;
                 case ErrorType::SymbolLookupError:
                     errstring = "SymbolLookupError";

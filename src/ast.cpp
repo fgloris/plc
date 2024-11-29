@@ -96,7 +96,7 @@ Result<std::string> AST::getQuaternary(){
         code.emplace_back("j","_","_",std::to_string(dest));
 
     }else if (name == "If" || name == "While"){
-        if (children.size() != 2 || children[0].name != "Condition") return Error<std::string>(ErrorType::CompileError);
+        if (children.size() != 2 || children[0].name != "Condition") return Error<std::string>(ErrorType::InvalidSyntax);
         size_t current_size = code.size();
         if (children[0].children.size() == 3){
             Result<std::string> res1 = children[0].children[0].getQuaternary();
@@ -105,20 +105,22 @@ Result<std::string> AST::getQuaternary(){
             if (!res2.isOk) return res2;
             code.emplace_back("j"+children[0].children[1].name,*res1,*res2,std::to_string(current_size+2));
             code.emplace_back("j","_","_",std::to_string(current_size+3));
-            children[1].getQuaternary();
+            auto res = children[1].getQuaternary();
+            if (!res.isOk) return res;
         }else if (children[0].children.size() == 2){
             Result<std::string> res = children[0].children[1].getQuaternary();
             if (!res.isOk) return res;
             code.emplace_back("j"+children[0].children[0].name,*res,"_",std::to_string(current_size+2));
             code.emplace_back("j","_","_",std::to_string(current_size+3));
-            children[1].getQuaternary();
+            res = children[1].getQuaternary();
+            if (!res.isOk) return res;
         }
         code[current_size+1].result = std::to_string(code.size());
         if (name == "while"){
             code.emplace_back("j","_","_",std::to_string(current_size));
         }
     }else if (name == "Calc"){
-        if (children.size() <3) return Error<std::string>(ErrorType::CompileError);
+        if (children.size() <3) return Error<std::string>(ErrorType::InvalidSyntax);
         std::string tmp = getTempName();
         code.emplace_back(":=",children[0].name,"_",tmp);
         for (size_t i=1; i<children.size(); i+=2){
