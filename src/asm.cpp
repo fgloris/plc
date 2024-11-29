@@ -97,11 +97,16 @@ Result<std::string> Scope::findVar(const std::string& var) const{
     return Ok("[rsp+" + std::to_string(*pos*8)+"]");
 }
 
-Result<std::string> Scope::findValue(const std::string& val) const{
+Result<std::string> Scope::findRValue(const std::string& val) const{
     Result<std::string> res = findConst(val);
     if (!res.isOk){
         res = findVar(val);
-        if (!res.isOk) return Error<std::string>(res);
+        if (!res.isOk){
+            char* p;
+            strtol(val.c_str(), &p, 10);
+            if (*p) return Error<std::string>(res);
+            return Ok(val);
+        }
         return Ok(*res);
     }return Ok(*res);
 }
@@ -111,8 +116,12 @@ NASMLinuxELF64::NASMLinuxELF64():text(".text"),bss(".bss"),data(".data"),temp_la
     text.lines.emplace_back("global _start");
 }
 
-std::string NASMLinuxELF64::getTempLabelName(){
-    return "_temp"+std::to_string(temp_label_ptr++);
+std::string NASMLinuxELF64::addTempLabelName(){
+    return "_temp_label"+std::to_string(temp_label_ptr++);
+}
+
+std::string NASMLinuxELF64::getCurrentTempLabelName(){
+    return "_temp_label"+std::to_string(temp_label_ptr-1);
 }
 
 Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
@@ -136,17 +145,14 @@ Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
             text.addLine(s.label_ptr, "mov qword"+*lvalue_str+",rax");
             return Ok(0);
         }
-        char* p;
-        strtol(rvalue.c_str(), &p, 10);
-        if (!*p){
-            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+","+ rvalue);
-        }else if (Result<std::string> rvalue_str = s.findVar(rvalue); rvalue_str.isOk){
+        Result<std::string> rvalue_str = s.findRValue(rvalue);
+        if (!rvalue_str.isOk) return Error<int>(rvalue_str);
+
+        if ((*rvalue_str)[0]=='['){
             text.addLine(s.label_ptr, "mov rax,"+*rvalue_str);
             text.addLine(s.label_ptr, "mov qword"+*lvalue_str+",rax");
-        }else if (Result<std::string> rvalue_str = s.findConst(rvalue); rvalue_str.isOk){
-            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+","+*rvalue_str);
         }else{
-            return Error<int>(ErrorType::SymbolLookupError);
+            text.addLine(s.label_ptr, "mov qword"+*lvalue_str+","+*rvalue_str);
         }
     }else if (name == "Program"){
         for (const AST& child : input.children){
@@ -185,43 +191,117 @@ Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
             return Error<int>(ErrorType::SymbolLookupError);
         }
         text.addLine(s.label_ptr, "call "+input.children[0].name);
+    }else if (name == "Condition"){
+        std::string label_name = addTempLabelName();
+        if (input.children[0].name == "odd"){
+            if (input.children[1].name=="Calc"){
+                Result<int> res = generate(input.children[1], s);
+                if (!res.isOk) return res;
+                text.addLine(s.label_ptr, "test rax,1");
+                text.addLine(s.label_ptr, "jz "+label_name);
+            }else{
+                Result<std::string> value = s.findRValue(input.children[1].name);
+                if (!value.isOk) return Error<int>(value);
+                text.addLine(s.label_ptr, "mov rax,"+*value);
+                text.addLine(s.label_ptr, "test rax,1");
+                text.addLine(s.label_ptr, "jz "+label_name);
+            }
+        }else{
+            std::string jump;
+            const std::string& cmp = input.children[1].name;
+            if (cmp == "<>") jump = "je";
+            else if (cmp == ">=") jump = "jl";
+            else if (cmp == "<=") jump = "jg";
+            else if (cmp == ">") jump = "jle";
+            else if (cmp == "<") jump = "jge";
+            else if (cmp == "=") jump = "jne";
+
+            std::string lvalue,rvalue;
+            if (input.children[0].name=="Calc"){
+                Result<int> res = generate(input.children[0], s);
+                if (!res.isOk) return res;
+                lvalue = "rax";
+            }else{
+                Result<std::string> lvalue_res = s.findRValue(input.children[0].name);
+                if (!lvalue_res.isOk) return Error<int>(lvalue_res);
+                lvalue = *lvalue_res;
+            }
+            if (input.children[2].name=="Calc"){
+                if (lvalue == "rax"){
+                    text.addLine(s.label_ptr, "mov rbx,"+lvalue);
+                    lvalue = "rbx";
+                }
+                Result<int> res = generate(input.children[0], s);
+                if (!res.isOk) return res;
+                rvalue = "rax";
+            }else{
+                Result<std::string> rvalue_res= s.findRValue(input.children[2].name);
+                if (!rvalue_res.isOk) return Error<int>(rvalue_res);
+                rvalue = *rvalue_res;
+            }
+
+            if (lvalue[0]=='[' && rvalue[0]=='['){
+                text.addLine(s.label_ptr, "mov rax,"+lvalue);
+                text.addLine(s.label_ptr, "cmp rax,"+rvalue);
+            }else if (lvalue[0]=='['){
+                text.addLine(s.label_ptr, "cmp qword"+lvalue+","+rvalue);
+            }else text.addLine(s.label_ptr, "cmp "+lvalue+","+rvalue);
+            text.addLine(s.label_ptr, jump+" "+label_name);
+        }
     }else if (name == "If"){
-        
+        if (input.children[0].name != "Condition") return Error<int>(ErrorType::CompileError);
+        Result<int> res = generate(input.children[0], s);
+        if (!res.isOk) return res;
+        std::string exit_label_name = getCurrentTempLabelName();
+
+        Scope scope(&s);
+        for (size_t i=1; i<input.children.size(); i++){
+            const AST& child = input.children[i];
+            Result<int> res = generate(child, scope);
+            if (!res.isOk) return res;
+        }
+        text.addFreeScopeLine(scope);
+        text.addLine(s.label_ptr, exit_label_name + ":");
     }else if (name == "While"){
+        std::string loop_label_name = addTempLabelName();
+        text.addLine(s.label_ptr, loop_label_name + ":");
+        
+        if (input.children[0].name != "Condition") return Error<int>(ErrorType::CompileError);
+        Result<int> res = generate(input.children[0], s);
+        if (!res.isOk) return res;
+        std::string exit_label_name = getCurrentTempLabelName();
+
+        Scope scope(&s);
+        for (size_t i=1; i<input.children.size(); i++){
+            const AST& child = input.children[i];
+            Result<int> res = generate(child, scope);
+            if (!res.isOk) return res;
+        }
+        text.addFreeScopeLine(scope);
+        
+        text.addLine(s.label_ptr, "jmp "+loop_label_name);
+        text.addLine(s.label_ptr, exit_label_name + ":");
     }else if (name == "Calc"){
         if (input.children.size() <3) return Error<int>(ErrorType::CompileError);
-        Result<std::string> first_value = s.findValue(input.children[0].name);
+        Result<std::string> first_value = s.findRValue(input.children[0].name);
         if (!first_value.isOk) return Error<int>(first_value);
         text.addLine(s.label_ptr, "mov rax,"+*first_value);
 
         for (size_t i=1; i<input.children.size(); i+=2){
             const std::string& operand = input.children[i].name;
-            Result<std::string> value = s.findVar(input.children[i+1].name);
+            Result<std::string> value = s.findRValue(input.children[i+1].name);
+            if (!value.isOk) return Error<int>(value);
 
-            if (!value.isOk) {
-                value = s.findConst(input.children[i+1].name);
-                if (!value.isOk) return Error<int>(value);
-                if (operand=="+"){
-                    text.addLine(s.label_ptr, "add rax,"+*value);
-                }else if (operand=="-"){
-                    text.addLine(s.label_ptr, "sub rax,"+*value);
-                }else if (operand=="*"){
-                    text.addLine(s.label_ptr, "mov rbx,"+*value);
-                    text.addLine(s.label_ptr, "imul rbx");
-                }else if (operand=="/"){
-                    text.addLine(s.label_ptr, "mov rbx,"+*value);
-                    text.addLine(s.label_ptr, "idiv rbx");
-                }
-            }else{
-                if (operand=="+"){
-                    text.addLine(s.label_ptr, "add rax,"+*value);
-                }else if (operand=="-"){
-                    text.addLine(s.label_ptr, "sub rax,"+*value);
-                }else if (operand=="*"){
-                    text.addLine(s.label_ptr, "imul "+*value);
-                }else if (operand=="/"){
-                    text.addLine(s.label_ptr, "idiv "+*value);
-                }
+            if (operand=="+"){
+                text.addLine(s.label_ptr, "add rax,"+*value);
+            }else if (operand=="-"){
+                text.addLine(s.label_ptr, "sub rax,"+*value);
+            }else if (operand=="*"){
+                text.addLine(s.label_ptr, "mov rbx,"+*value);
+                text.addLine(s.label_ptr, "imul rbx");
+            }else if (operand=="/"){
+                text.addLine(s.label_ptr, "mov rbx,"+*value);
+                text.addLine(s.label_ptr, "idiv rbx");
             }
         }
     }else return Error<int>(ErrorType::InvalidSyntax);

@@ -31,7 +31,7 @@ struct Scope {
     Result<size_t> findVarPos(const std::string& name) const;
     Result<std::string> findVar(const std::string& var) const;
     Result<std::string> findConst(const std::string& con) const;
-    Result<std::string> findValue(const std::string& val) const;
+    Result<std::string> findRValue(const std::string& val) const;
     void addVar(const std::string& var);
     void addConst(const std::string& name, int value);
 };
@@ -59,7 +59,8 @@ class NASMLinuxELF64 : public ASMGenerator{
     Result<int> generate(const AST& input, Scope& s);
     Result<std::string> generate(const AST& input) override;
     Result<int> generate(const AST& input, const std::string &asmfile, const std::string &objfile, const std::string &exefile) override;
-    std::string getTempLabelName();
+    std::string addTempLabelName();
+    std::string getCurrentTempLabelName();
     private:
     Section text,bss,data;
     int temp_label_ptr;
