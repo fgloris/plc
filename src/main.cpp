@@ -26,8 +26,9 @@ int main() {
     std::cout<<std::endl;
 
     NASMLinuxELF64 compiler;
-    Result<std::string> res4 = compiler.generate(ast);
-    std::cout<<*res4<<std::endl;
+    Result<int> res5 = compiler.compile(ast,"../output/example-code.asm");
+    std::cout<<(std::string)res5<<std::endl;
+
 
     return 0;
 }

@@ -310,6 +310,14 @@ Result<int> NASMLinuxELF64::generate(const AST& input, Scope& s){
 
 Result<std::string> NASMLinuxELF64::generate(const AST& input){
     Scope global_scope;
+    temp_label_ptr = 0;
+    text=Section(".text");
+    bss=Section(".bss");
+    data=Section(".data");
+
+    text.labels.emplace_back("_start");
+    text.lines.emplace_back("global _start");
+
     Result<int> res = generate(input,global_scope);
     if (!res.isOk) return Error<std::string>(res);
     std::string res_str;
@@ -319,7 +327,7 @@ Result<std::string> NASMLinuxELF64::generate(const AST& input){
     return Ok(res_str);
 }
 
-Result<int> NASMLinuxELF64::generate(const AST& input, const std::string &asmfile, const std::string &objfile, const std::string &exefile){
+Result<int> NASMLinuxELF64::compile(const AST& input, const std::string &asmfile, const std::string &objfile, const std::string &exefile){
     std::ofstream f(asmfile);
     if (!f) return Result<int>(ErrorType::IOError);
     Result<std::string> result = generate(input);
